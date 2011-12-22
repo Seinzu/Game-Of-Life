@@ -1,7 +1,7 @@
 $(document).ready(function() {
     var width, height, board, boardView, selectionClass, runGame, stopGame, refreshRate, Cell, cells;
-    width = 6;
-    height = 3;
+    width = 20;
+    height = 20;
     board = $('#board');
     selectionClass = "coloured";
     refreshRate = 500;
@@ -35,7 +35,6 @@ $(document).ready(function() {
         }
 
         Cell.prototype.findNeighbours = function() {
-            var a, b, c;
             this.neighbours = new Array();
             this.neighbours.push($("#" + this.columnBefore + "_" + this.row));
             this.neighbours.push($('#' + this.columnBefore + "_" + this.rowBefore));
@@ -45,36 +44,32 @@ $(document).ready(function() {
             this.neighbours.push($('#' + this.columnAfter + "_" + this.rowAfter)); 
             this.neighbours.push($("#" + this.column + "_" + this.rowBefore)); 
             this.neighbours.push($("#" + this.column + "_" + this.rowAfter));
-            return true;
         };
 
         Cell.prototype.findLiveNeighbours = function() {
-            var neighbour;
             this.liveNeighbours = 0;
-            console.log("looking " + this.element.attr("id"));
-            console.log(this.neighbours);
-            for (var i = 0; i < this.neighbours.length; i++){
-                neighbour = this.neighbours[i];
-                console.log(neighbour);
+            self = this;
+            $.each(this.neighbours, function (idx, neighbour){
                 if (neighbour.hasClass(selectionClass)){
-                    this.liveNeighbours++;    
+                    self.liveNeighbours++;   
                 }
-            }
+            });
         };
 
         Cell.prototype.isLiving = function() {
-            if (this.element.hasClass(selectionClass)) {
-                return true;
-            }
-            return false;
+            return this.element.hasClass(selectionClass);
         };
 
         Cell.prototype.makeDead = function() {
-            this.element.removeClass(selectionClass);
+            if (this.isLiving()){
+                this.element.removeClass(selectionClass);
+            }
         };
 
         Cell.prototype.makeLive = function() {
-            this.element.addClass(selectionClass);
+            if (!this.isLiving()){
+                this.element.addClass(selectionClass);
+            }
         }
 
         return Cell;
@@ -95,7 +90,9 @@ $(document).ready(function() {
         updateBoard: function() {
             $.each(cells, function(index, cell) {
                 cell.findLiveNeighbours();
-                if (cell.isLiving()) {
+            });
+            $.each(cells, function(index, cell){
+               if (cell.isLiving()) {
                     if (cell.liveNeighbours != 3 && cell.liveNeighbours != 2) {
                         cell.makeDead();
                     }
@@ -103,7 +100,7 @@ $(document).ready(function() {
                     if (cell.liveNeighbours == 3) {
                         cell.makeLive();
                     }
-                }
+                } 
             });
         },
         
@@ -125,13 +122,12 @@ $(document).ready(function() {
 
     runGame = function(e) {
         e.preventDefault();
-        boardView.updateBoard();
-        //interval = setInterval(boardView.updateBoard, refreshRate);
+        interval = setInterval(boardView.updateBoard, refreshRate);
     };
 
     stopGame = function(e) {
         e.preventDefault();
-        //clearInterval(interval);
+        clearInterval(interval);
     }
     $('#startButton').bind("click", runGame);
     $('#stopButton').bind("click", stopGame);
