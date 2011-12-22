@@ -16,3 +16,21 @@ To use the game, you must provide a table with id "board" and two buttons with i
 Obviously you should also include the JavaScript file:
 
     <script type='text/javascript' src='gol.js' />
+    
+Finally, you'll need some CSS, here is an example:
+
+    #board .cell {
+        width: 20px;
+        height:20px;
+        border: 1px dotted black;
+    }
+
+    #board .row {
+        clear: both;
+        float: left;
+        display: inline-block; 
+    }
+
+    #board .coloured {
+        background-color: black;   
+    }
