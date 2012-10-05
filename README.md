@@ -4,18 +4,22 @@ A version of Conway's Game of Life written in JavaScript.
 
 ### Usage
 
-To use the game, you must provide a table with id "board" and two buttons with id 'startButton' and 'stopButton' respectively. The table will be used to construct the grid and the buttons will be used to start and stop the running of the game. Here is an example segment of HTML that will work with the JavaScript provided:
+The implementation of the game of life is as a jquery plugin. To use the game you should run the gameOfLife method
+on an element as below
 
-    <table id='board'>
-    
-    </table>
+    $("#some-element").gameOfLife();
 
-    <a id='startButton' href='#'>Start</a>
-    <a id='stopButton' href='#'>Stop</a>
+There are a number of options that you can specify:
 
-Obviously you should also include the JavaScript file:
+* width (default = 10) the number of columns for the board.
+* height (default = 10) the number of rows for the board.
+* selectionClass (default = "coloured") the css class used to indicate that a cell is alive.
+* cssID (default = "board") the id of the board created by the function.
+* updateInterval (default = 800) the time elapsed in milliseconds before the next turn of the game is performed.
 
-    <script type='text/javascript' src='gol.js' />
+Obviously you should also include the JavaScript file (and jQuery):
+
+    <script type='text/javascript' src='jquery-game-of-life.js' />
     
 Finally, you'll need some CSS, here is an example:
 
@@ -34,3 +38,5 @@ Finally, you'll need some CSS, here is an example:
     #board .coloured {
         background-color: black;   
     }
+
+You may want to style the start/stop button. This has a class of "btn".
