@@ -54,21 +54,37 @@
             this.status = true;
         };
 
-        Cell.prototype.render = function (context, size, margin) {
-            context.fillStyle = this.isLiving() ? '#000000' : "#FFFFFF";
-            context.strokeRect(margin + (this.column - 1) * (size + margin), margin + (this.row - 1) * (size + margin), size, size);
-            context.fillRect(margin + (this.column - 1) * (size + margin), margin + (this.row - 1) * (size + margin), size, size);
-        };
-
         return Cell;
 
     })();
 
     CellView = (function () {
 
-        function CellView(model){
-            this.model = model;
+        function CellView(context, size, margin, liveColour, deadColour){
+            this.context = context;
+            this.size = size;
+            this.margin = margin;
+            this.liveColour = liveColour;
+            this.deadColour = deadColour;
+            this.model = null;
         }
+
+        CellView.prototype.setModel = function (model) {
+            this.model = model;
+        };
+
+        CellView.prototype.render = function () {
+            var chartRow, chartColumn;
+            chartRow = this.model.row - 1;
+            chartColumn = this.model.column - 1;
+            this.context.fillStyle = this.model.isLiving() ? this.liveColour : this.deadColour;
+            this.context.strokeRect(this.margin + chartColumn * (this.size + this.margin),
+                this.margin + chartRow * (this.size + this.margin), this.size, this.size);
+            this.context.fillRect(this.margin + chartColumn * (this.size + this.margin),
+                this.margin + chartRow * (this.size + this.margin), this.size, this.size);
+        }
+
+
 
         return CellView;
 
@@ -218,14 +234,16 @@
          * Sets up the initial board as an HTML table.
          */
         BoardView.prototype.renderBoard = function () {
-            var context, self = this, rows;
+            var context, self = this, rows, cellView;
             rows = this.model.cells.getRows();
             if (this.canvas[0].getContext) {
                 // Let's do this context style
                 context = this.canvas[0].getContext("2d");
-                context.strokeStyle = "#000000";
+                context.strokeStyle = "#333333";
+                cellView = new CellView(context, this.settings.dimension, this.settings.margin, this.settings.liveColour, this.settings.deadColour);
                 this.model.cells.each(function (idx, value) {
-                    value.render(context, this.settings.dimension, this.settings.margin);
+                    cellView.setModel(value);
+                    cellView.render();
                 }, this)
             }
 
@@ -294,7 +312,7 @@
     $.fn.gameOfLife = function (options) {
         var settings;
         settings = $.extend({
-                width:30, height:30, updateInterval:800, dimension:20, margin:1},
+                width:30, height:30, updateInterval:800, dimension:20, margin:1, liveColour: "#FFFFFF", deadColour: "#000000"},
             options);
         this.each(function (idx, value) {
             var startStopBtn, board, interval;
