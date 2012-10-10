@@ -60,7 +60,7 @@
 
     CellView = (function () {
 
-        function CellView(context, size, margin, liveColour, deadColour, hasGrid){
+        function CellView(context, size, margin, liveColour, deadColour, hasGrid) {
             this.context = context;
             this.size = size;
             this.margin = margin;
@@ -79,14 +79,13 @@
             chartRow = this.model.row - 1;
             chartColumn = this.model.column - 1;
             this.context.fillStyle = this.model.isLiving() ? this.liveColour : this.deadColour;
-            if (this.hasGrid){
+            if (this.hasGrid) {
                 this.context.strokeRect(this.margin + chartColumn * (this.size + this.margin),
                     this.margin + chartRow * (this.size + this.margin), this.size, this.size);
             }
             this.context.fillRect(this.margin + chartColumn * (this.size + this.margin),
                 this.margin + chartRow * (this.size + this.margin), this.size, this.size);
         }
-
 
 
         return CellView;
@@ -223,7 +222,7 @@
 
             this.canvas = $("<canvas>").attr("width", this.settings.width * (this.settings.dimension + this.settings.margin) + (this.settings.margin * 2))
                 .attr('height', this.settings.height * (this.settings.dimension + this.settings.margin) + (this.settings.margin * 2)).appendTo(this.el);
-                this.canvas.click(function (e) {
+            this.canvas.click(function (e) {
                 var column, mouseLocation, row;
                 mouseLocation = {x:e.pageX - e.target.offsetLeft, y:e.pageY - e.target.offsetTop};
                 // +1 is because we are counting rows and columns from 1 rather than 0
@@ -231,6 +230,9 @@
                 column = Math.floor(mouseLocation.x / (self.settings.dimension + self.settings.margin)) + 1;
                 self.model.selectCell(row, column);
             });
+            if (!$(this.canvas)[0].getContext) {
+                $("<p>").addClass("error").html("Sorry, your browser does not support the Game of Life.").appendTo(this.el);
+            }
         };
 
         /**
@@ -248,9 +250,7 @@
                     cellView.render();
                 }, this)
             }
-            else {
-                $("<p>").addClass("error").html("Sorry, your browser does not support the Game of Life.").appendTo(this.el);
-            }
+
 
         };
 
@@ -322,7 +322,7 @@
     $.fn.gameOfLife = function (options) {
         var settings;
         settings = $.extend({
-                width:30, height:30, updateInterval:800, dimension:20, margin:1, liveColour: "#FFFFFF", deadColour: "#000000", hasGrid: true},
+                width:30, height:30, updateInterval:800, dimension:20, margin:1, liveColour:"#FFFFFF", deadColour:"#000000", hasGrid:true},
             options);
         this.each(function (idx, value) {
             var startStopBtn, board, interval;
