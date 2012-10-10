@@ -79,7 +79,7 @@
             chartRow = this.model.row - 1;
             chartColumn = this.model.column - 1;
             this.context.fillStyle = this.model.isLiving() ? this.liveColour : this.deadColour;
-            if (this.hasRect){
+            if (this.hasGrid){
                 this.context.strokeRect(this.margin + chartColumn * (this.size + this.margin),
                     this.margin + chartRow * (this.size + this.margin), this.size, this.size);
             }
