@@ -1,6 +1,6 @@
 (function ($) {
 
-    var BoardView, Cell, StartStopButton;
+    var BoardView, Board, Cell, CellCollection, CellView, StartStopButton;
     /**
      * Cell is a model function that covers the state of a single entity in the game of life.
      * The code has some mixed in concerns with the view layer but that is largely to do with
@@ -10,41 +10,19 @@
      */
     Cell = (function () {
 
-        function Cell(selectionClass, cell) {
-            this.element = cell;
-            this.selectionClass = selectionClass;
-            this.row = this.element.closest("tr");
+        function Cell(column, row) {
+            this.column = column;
+            this.row = row;
+            this.status = false;
+            this.view = new CellView(this);
         }
 
         /**
          * Later in the process of running the game of life we will need each cell to interrogate its neighbours
          * and discover which of them are dead. This function is designed to find those neighbours for each cell.
          */
-        Cell.prototype.findNeighbours = function () {
-            var column, row, previousRows, futureRows, previousKids, nextKids;
-            this.elementsBefore = this.element.prevAll();
-            this.elementsAfter = this.element.nextAll();
-            previousRows = this.row.prevAll();
-            futureRows = this.row.nextAll();
-            this.previousRow = (previousRows.length > 0) ? previousRows.first() : futureRows.last();
-            this.nextRow = (futureRows.length > 0) ? futureRows.first() : previousRows.last();
-            this.previousElement = (this.elementsBefore.length > 0)? this.elementsBefore.first() : this.previousRow.children().last();
-            this.nextElement = (this.elementsAfter.length > 0) ? this.elementsAfter.first() : this.nextRow.children().first();
-
-            // Now we want to use our data information to work out the elements above and below
-            column = this.element.data("column");
-            row = this.element.data("row");
-            previousKids = this.previousRow.children();
-            nextKids = this.nextRow.children();
-            this.elementAbove = $(previousKids[column]);
-            this.elementBelow = $(nextKids[column]);
-            this.elementPreviousAbove = $(previousKids[this.previousElement.data("column")]);
-            this.elementNextAbove = $(previousKids[this.nextElement.data("column")]);
-            this.elementPreviousBelow = $(nextKids[this.previousElement.data("column")]);
-            this.elementNextBelow = $(nextKids[this.nextElement.data("column")]);
-
-            this.neighbours = [this.nextElement, this.previousElement, this.elementAbove, this.elementBelow,
-            this.elementPreviousAbove, this.elementNextAbove, this.elementPreviousBelow, this.elementNextBelow];
+        Cell.prototype.findNeighbours = function (cellCollection) {
+            this.neighbours = cellCollection.findNeighbours(this.row, this.column);
         };
         /**
          * To determine the status of our cell, we need to determine, at time t, which of the neighbouring
@@ -56,63 +34,130 @@
             this.liveNeighbours = 0;
             self = this;
             $.each(this.neighbours, function (idx, neighbour) {
-                if (neighbour.data("status") === "living") {
+                if (neighbour.status) {
                     self.liveNeighbours++;
                 }
             });
         };
 
         Cell.prototype.isLiving = function () {
-            return this.element.data("status") === "living";
+            return this.status;
         };
         /**
          * Effectively a setter for the property of living. This sets that property to false.
          */
         Cell.prototype.makeDead = function () {
-            if (this.isLiving()) {
-                this.element.removeClass(this.selectionClass);
-                this.element.data("status", "dead");
-            }
+            this.status = false;
         };
 
         Cell.prototype.makeLive = function () {
-            if (!this.isLiving()) {
-                this.element.addClass(this.selectionClass);
-                this.element.data("status", "living");
-            }
+            this.status = true;
+        };
+
+        Cell.prototype.render = function (context, size, margin) {
+            context.fillStyle = this.isLiving() ? '#000000' : "#FFFFFF";
+            context.strokeRect(margin + (this.column - 1) * (size + margin), margin + (this.row - 1) * (size + margin), size, size);
+            context.fillRect(margin + (this.column - 1) * (size + margin), margin + (this.row - 1) * (size + margin), size, size);
         };
 
         return Cell;
 
     })();
 
-    BoardView = (function () {
+    CellView = (function () {
 
-        function BoardView(el, settings) {
-            this.el = el;
-            this.settings = settings;
-            this.initialiseBoard();
+        function CellView(model){
+            this.model = model;
         }
 
-        BoardView.prototype.selectCell = function (e, cellElement) {
-            var cell;
-            cell = $(cellElement);
-            if (cell.hasClass(this.settings.selectionClass)) {
-                cell.removeClass(this.settings.selectionClass);
-                cell.data("status", "dead");
-            } else {
-                cell.addClass(this.settings.selectionClass);
-                cell.data("status", "living");
-            }
+        return CellView;
+
+    })();
+
+    CellCollection = (function () {
+
+        function CellCollection(width, height) {
+            this.settings = {width:width, height:height};
+            this.cells = {};
+            this.createCells();
+        }
+
+        CellCollection.prototype.getRows = function () {
+            return this.cells;
         };
 
-        BoardView.prototype.updateBoard = function () {
-            $.each(this.cells, function (index, cell) {
-                cell.findLiveNeighbours();
+        CellCollection.prototype.createCells = function () {
+            var self = this;
+            for (var i = 1; i <= this.settings.height; i++) {
+                this.cells["row-" + i] = {};
+                for (var n = 1; n <= this.settings.width; n++) {
+                    var cell;
+                    this.cells['row-' + i]['column-' + n] = new Cell(n, i);
+                }
+            }
+            this.each(function (idx, value) {
+                if (typeof value.findNeighbours === "function") {
+                    value.findNeighbours(self);
+                }
             });
-            // There's a race condition (cells can die before they are counted so we do this in another each
-            // statement)
-            $.each(this.cells, function (index, cell) {
+        };
+
+        CellCollection.prototype.findNeighbours = function (row, column) {
+            var sameRowPrev, sameRowNext, nextRowSame, nextRowPrev, nextRowNext, prevRowSame, prevRowPrev, prevRowNext,
+                prevColumn, nextColumn, prevRow, nextRow;
+            row = parseInt(row);
+            column = parseInt(column);
+            prevColumn = (column > 1) ? column - 1 : this.settings.width;
+            nextColumn = (column < this.settings.width) ? column + 1 : 1;
+            prevRow = (row > 1) ? row - 1 : this.settings.height;
+            nextRow = (row < this.settings.height) ? row + 1 : 1;
+
+            sameRowPrev = this.cells["row-" + row]["column-" + prevColumn];
+            sameRowNext = this.cells['row-' + row]['column-' + nextColumn];
+            prevRowPrev = this.cells['row-' + prevRow]["column-" + prevColumn];
+            prevRowSame = this.cells['row-' + prevRow]["column-" + column];
+            prevRowNext = this.cells['row-' + prevRow]["column-" + nextColumn];
+            nextRowPrev = this.cells['row-' + nextRow]["column-" + prevColumn];
+            nextRowSame = this.cells['row-' + nextRow]["column-" + column];
+            nextRowNext = this.cells['row-' + nextRow]["column-" + nextColumn];
+
+            return [sameRowPrev, sameRowNext, nextRowSame, nextRowPrev, nextRowNext, prevRowSame, prevRowPrev,
+                prevRowNext];
+        };
+
+        CellCollection.prototype.each = function (callback, context) {
+            $.each(this.cells, function (idx, value) {
+                $.each(value, function (cellIdx, cell) {
+                    callback.apply(context, [cellIdx, cell]);
+                });
+            });
+
+        };
+
+        CellCollection.prototype.getCell = function (row, column) {
+            if (typeof this.cells["row-" + row] !== "undefined" && typeof this.cells["row-" + row]["column-" + column] !== "undefined") {
+                return this.cells["row-" + row]["column-" + column];
+            }
+            return false;
+        }
+
+        return CellCollection;
+
+    })();
+
+    Board = (function () {
+
+        function Board(el, settings) {
+            this.cells = new CellCollection(settings.width, settings.height);
+            this.view = new BoardView(el, settings, this);
+            this.view.renderBoard();
+        }
+
+        Board.prototype.updateBoard = function () {
+            this.cells.each(function (idx, value) {
+                value.findLiveNeighbours();
+            }, this);
+            this.cells.each(function (index, cell) {
                 if (cell.isLiving()) {
                     if (cell.liveNeighbours != 3 && cell.liveNeighbours != 2) {
                         cell.makeDead();
@@ -122,34 +167,68 @@
                         cell.makeLive();
                     }
                 }
+            }, this);
+            this.view.renderBoard();
+        };
+
+        Board.prototype.selectCell = function (row, column) {
+            var cell;
+            cell = this.cells.getCell(row, column);
+            if (cell) {
+                if (cell.isLiving()) {
+                    cell.makeDead();
+                }
+                else {
+                    cell.makeLive();
+                }
+                this.view.renderBoard();
+            }
+        };
+
+        return Board;
+
+    })();
+
+    BoardView = (function () {
+
+        function BoardView(el, settings, model) {
+            this.el = $(el);
+            this.settings = settings;
+            this.model = model;
+            this.initialise();
+            this.renderBoard();
+        }
+
+        BoardView.prototype.initialise = function () {
+            var self = this;
+
+            this.canvas = $("<canvas>").attr("width", this.settings.width * (this.settings.dimension + this.settings.margin) + (this.settings.margin * 2))
+                .attr('height', this.settings.height * (this.settings.dimension + this.settings.margin) + (this.settings.margin * 2)).appendTo(this.el);
+                this.canvas.click(function (e) {
+                var column, mouseLocation, row;
+                mouseLocation = {x:e.pageX - e.target.offsetLeft, y:e.pageY - e.target.offsetTop};
+                // +1 is because we are counting rows and columns from 1 rather than 0
+                row = Math.floor(mouseLocation.y / (self.settings.dimension + self.settings.margin)) + 1;
+                column = Math.floor(mouseLocation.x / (self.settings.dimension + self.settings.margin)) + 1;
+                self.model.selectCell(row, column);
             });
         };
+
         /**
          * Sets up the initial board as an HTML table.
          */
-        BoardView.prototype.initialiseBoard = function () {
-            var self;
-            self = this;
-            this.board = $("<table>").attr("id", this.settings.cssID).appendTo($(this.el));
-            this.cells = [];
-            for (var i = 0; i < this.settings.height; i++) {
-                var rowElement;
-                rowElement = $("<tr>").data("row", i).attr("id", "row-" + i).appendTo(this.board).addClass("row");
-                for (var n = 0; n < this.settings.width; n++) {
-                    var cell;
-                    cell = $("<td>")
-                        .appendTo(rowElement)
-                        .addClass("cell")
-                        .data("column", n)
-                        .on("click", function (e) {
-                            self.selectCell.apply(self, [e, this])
-                        });
-                    this.cells.push(new Cell(this.settings.selectionClass, cell));
-                }
+        BoardView.prototype.renderBoard = function () {
+            var context, self = this, rows;
+            rows = this.model.cells.getRows();
+            if (this.canvas[0].getContext) {
+                // Let's do this context style
+                context = this.canvas[0].getContext("2d");
+                context.strokeStyle = "#000000";
+                this.model.cells.each(function (idx, value) {
+                    value.render(context, this.settings.dimension, this.settings.margin);
+                }, this)
             }
-            $.each(this.cells, function (i, value) {
-                value.findNeighbours()
-            });
+
         };
 
         return BoardView;
@@ -178,7 +257,10 @@
         StartStopButton.prototype.STARTED = true;
 
         StartStopButton.prototype.createElement = function () {
-            this.el = $("<a>").addClass("btn").appendTo($(this.parent));
+            var ptag;
+            ptag = $("<p>");
+            this.el = $("<a>").addClass("btn").appendTo(ptag);
+            ptag.appendTo($(this.parent));
         };
 
         StartStopButton.prototype.toggleState = function () {
@@ -212,20 +294,20 @@
     $.fn.gameOfLife = function (options) {
         var settings;
         settings = $.extend({
-                width:10, height:10, selectionClass:"coloured", cssID:"board", updateInterval:800},
+                width:30, height:30, updateInterval:800, dimension:20, margin:1},
             options);
         this.each(function (idx, value) {
-            var startStopBtn, boardView, interval;
-            boardView = new BoardView(value, settings);
+            var startStopBtn, board, interval;
+            board = new Board(value, settings);
             startStopBtn = new StartStopButton(value);
             startStopBtn.setClickHandler(function () {
                 startStopBtn.toggleState();
                 startStopBtn.render();
                 if (startStopBtn.getState() === "started") {
-                    boardView.updateBoard.apply(boardView, []);
-                    interval = setInterval(function (){
-                        boardView.updateBoard.apply(boardView, []);
-                    }, settings.updateInterval
+                    board.updateBoard.apply(board, []);
+                    interval = setInterval(function () {
+                            board.updateBoard.apply(board, []);
+                        }, settings.updateInterval
                     );
                 }
                 else {
