@@ -1,6 +1,6 @@
 (function ($) {
 
-    var BoardView, Board, Cell, CellCollection, StartStopButton;
+    var BoardView, Board, Cell, CellCollection, CellView, StartStopButton;
     /**
      * Cell is a model function that covers the state of a single entity in the game of life.
      * The code has some mixed in concerns with the view layer but that is largely to do with
@@ -14,6 +14,7 @@
             this.column = column;
             this.row = row;
             this.status = false;
+            this.view = new CellView(this);
         }
 
         /**
@@ -55,11 +56,21 @@
 
         Cell.prototype.render = function (context, size, margin) {
             context.fillStyle = this.isLiving() ? '#000000' : "#FFFFFF";
-            context.strokeRect(this.column * (size + margin), this.row * (size + margin), size, size);
-            context.fillRect(this.column * (size + margin), this.row * (size + margin), size, size);
+            context.strokeRect(margin + (this.column - 1) * (size + margin), margin + (this.row - 1) * (size + margin), size, size);
+            context.fillRect(margin + (this.column - 1) * (size + margin), margin + (this.row - 1) * (size + margin), size, size);
         };
 
         return Cell;
+
+    })();
+
+    CellView = (function () {
+
+        function CellView(model){
+            this.model = model;
+        }
+
+        return CellView;
 
     })();
 
@@ -190,13 +201,15 @@
 
         BoardView.prototype.initialise = function () {
             var self = this;
-            this.canvas = $("<canvas>").attr("width", this.settings.width * (this.settings.dimension + this.settings.margin))
-                .attr('height', this.settings.height * (this.settings.dimension + this.settings.margin)).appendTo(this.el);
-            this.canvas.click(function (e) {
+
+            this.canvas = $("<canvas>").attr("width", this.settings.width * (this.settings.dimension + this.settings.margin) + (this.settings.margin * 2))
+                .attr('height', this.settings.height * (this.settings.dimension + this.settings.margin) + (this.settings.margin * 2)).appendTo(this.el);
+                this.canvas.click(function (e) {
                 var column, mouseLocation, row;
                 mouseLocation = {x:e.pageX - e.target.offsetLeft, y:e.pageY - e.target.offsetTop};
-                row = Math.floor(mouseLocation.y / (self.settings.dimension + self.settings.margin));
-                column = Math.floor(mouseLocation.x / (self.settings.dimension + self.settings.margin));
+                // +1 is because we are counting rows and columns from 1 rather than 0
+                row = Math.floor(mouseLocation.y / (self.settings.dimension + self.settings.margin)) + 1;
+                column = Math.floor(mouseLocation.x / (self.settings.dimension + self.settings.margin)) + 1;
                 self.model.selectCell(row, column);
             });
         };
@@ -281,7 +294,7 @@
     $.fn.gameOfLife = function (options) {
         var settings;
         settings = $.extend({
-                width:30, height:30, selectionClass:"coloured", cssID:"board", updateInterval:800, dimension:20, margin:1},
+                width:30, height:30, updateInterval:800, dimension:20, margin:1},
             options);
         this.each(function (idx, value) {
             var startStopBtn, board, interval;
