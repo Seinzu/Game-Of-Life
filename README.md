@@ -18,6 +18,7 @@ There are a number of options that you can specify:
 * margin (default = 1) Margin between squares
 * liveColour (default = #000000) The colour of squares that are alive
 * deadColour (default = #FFFFFF) The colour of squares that are dead
+* hasGrid (default = true) Should we have a grid or just blank background.
 
 Obviously you should also include the JavaScript file (and jQuery):
 
