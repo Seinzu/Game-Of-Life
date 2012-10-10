@@ -60,12 +60,13 @@
 
     CellView = (function () {
 
-        function CellView(context, size, margin, liveColour, deadColour){
+        function CellView(context, size, margin, liveColour, deadColour, hasGrid){
             this.context = context;
             this.size = size;
             this.margin = margin;
             this.liveColour = liveColour;
             this.deadColour = deadColour;
+            this.hasGrid = hasGrid;
             this.model = null;
         }
 
@@ -78,8 +79,10 @@
             chartRow = this.model.row - 1;
             chartColumn = this.model.column - 1;
             this.context.fillStyle = this.model.isLiving() ? this.liveColour : this.deadColour;
-            this.context.strokeRect(this.margin + chartColumn * (this.size + this.margin),
-                this.margin + chartRow * (this.size + this.margin), this.size, this.size);
+            if (this.hasRect){
+                this.context.strokeRect(this.margin + chartColumn * (this.size + this.margin),
+                    this.margin + chartRow * (this.size + this.margin), this.size, this.size);
+            }
             this.context.fillRect(this.margin + chartColumn * (this.size + this.margin),
                 this.margin + chartRow * (this.size + this.margin), this.size, this.size);
         }
@@ -234,24 +237,30 @@
          * Sets up the initial board as an HTML table.
          */
         BoardView.prototype.renderBoard = function () {
-            var context, self = this, rows, cellView;
-            rows = this.model.cells.getRows();
+            var context, self = this, cellView;
             if (this.canvas[0].getContext) {
                 // Let's do this context style
                 context = this.canvas[0].getContext("2d");
                 context.strokeStyle = "#333333";
-                cellView = new CellView(context, this.settings.dimension, this.settings.margin, this.settings.liveColour, this.settings.deadColour);
+                cellView = new CellView(context, this.settings.dimension, this.settings.margin, this.settings.liveColour, this.settings.deadColour, this.settings.hasGrid);
                 this.model.cells.each(function (idx, value) {
                     cellView.setModel(value);
                     cellView.render();
                 }, this)
+            }
+            else {
+                $("<p>").addClass("error").html("Sorry, your browser does not support the Game of Life.").appendTo(this.el);
             }
 
         };
 
         return BoardView;
     })();
-
+    /**
+     * This object just manages a simple start/stop button, creates the button and handles the button's state and will trigger a passed
+     * call handler on click.
+     * @type {*}
+     */
     StartStopButton = (function () {
 
         function StartStopButton(parent) {
@@ -264,6 +273,7 @@
             this.clickHandler = function () {
                 // do nothing by default other than toggle state
                 self.toggleState();
+                self.render();
             };
             this.el.on("click", function (e) {
                 self.clickHandler.call([e, this]);
@@ -312,7 +322,7 @@
     $.fn.gameOfLife = function (options) {
         var settings;
         settings = $.extend({
-                width:30, height:30, updateInterval:800, dimension:20, margin:1, liveColour: "#FFFFFF", deadColour: "#000000"},
+                width:30, height:30, updateInterval:800, dimension:20, margin:1, liveColour: "#FFFFFF", deadColour: "#000000", hasGrid: true},
             options);
         this.each(function (idx, value) {
             var startStopBtn, board, interval;
