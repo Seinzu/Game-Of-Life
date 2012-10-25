@@ -315,7 +315,10 @@
         return StartStopButton;
 
     })();
-
+    /**
+     * For a given DOM element, generate a Game Of Life.
+     * @param options An object containing various options, described in the README.md file.
+     */
     $.fn.gameOfLife = function (options) {
         var settings;
         settings = $.extend({
