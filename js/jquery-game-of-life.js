@@ -250,10 +250,7 @@
                     cellView.render();
                 }, this)
             }
-
-
         };
-
         return BoardView;
     })();
     /**
